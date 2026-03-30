@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: rooms
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - type: string (required, enum: ['chat', 'voice', 'suggestion', 'member_count'])
+    //   - isPrivate: boolean (optional)
+    //   - categoryId: string (optional)
+    //   - bio: string (optional, 0-500 chars)
+    //   - permissions: map (optional)
+    //
+    // Collection: categories
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //
+    // Collection: badWords
+    // Document ID: auto-generated
+    // Fields:
+    //   - pattern: string (required)
+    //   - type: string (required, enum: ['word', 'link', 'mention'])
+    //   - warningsCount: number (optional)
+    //   - warningMessage: map (optional)
+    //   - punishment: string (optional, enum: ['ban', 'mute', 'none'])
+    //   - muteDuration: map (optional)
+    //   - deleteMessage: boolean (optional)
+    //   - logReport: boolean (optional)
+    //   - reportRoomId: string (optional)
+    //
+    // Collection: reports
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required)
+    //   - userName: string (optional)
+    //   - badWordId: string (required)
+    //   - timestamp: timestamp (required)
+    //   - messageContent: string (optional)
+    //   - actionTaken: string (optional)
+    //
+    // Collection: stats
+    // Document ID: global
+    // Fields:
+    //   - memberCount: number (required, >= 0)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sayzokg1@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidRoom(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.type in ['chat', 'voice', 'suggestion', 'member_count'] &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('isPrivate' in data) || data.isPrivate is bool);
+    }
+
+    function isValidCategory(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100;
+    }
+
+    function isValidBadWord(data) {
+      return data.pattern is string && data.pattern.size() >= 1 &&
+             data.type in ['word', 'link', 'mention'] &&
+             (!('warningsCount' in data) || data.warningsCount is number) &&
+             (!('punishment' in data) || data.punishment in ['ban', 'mute', 'none']) &&
+             (!('deleteMessage' in data) || data.deleteMessage is bool) &&
+             (!('logReport' in data) || data.logReport is bool);
+    }
+
+    function isValidReport(data) {
+      return data.userId is string && data.badWordId is string && data.timestamp is timestamp;
+    }
+
+    function isValidStats(data) {
+      return data.memberCount is number && data.memberCount >= 0;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidRoom(request.resource.data);
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidCategory(request.resource.data);
+    }
+
+    match /badWords/{badWordId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidBadWord(request.resource.data);
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && isValidReport(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /stats/{statId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidStats(request.resource.data);
+    }
+  }
+}

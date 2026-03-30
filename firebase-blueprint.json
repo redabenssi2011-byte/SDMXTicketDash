@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "A Discord-like channel or room.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the room." },
+        "type": { "type": "string", "enum": ["chat", "voice", "suggestion", "member_count"], "description": "The type of room." },
+        "isPrivate": { "type": "boolean", "description": "Whether the room is private." },
+        "categoryId": { "type": "string", "description": "The ID of the category this room belongs to." },
+        "bio": { "type": "string", "description": "The room topic or bio." },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "view": { "type": "boolean" },
+            "sendMessages": { "type": "boolean" },
+            "connect": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["name", "type"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A grouping for rooms.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the category." }
+      },
+      "required": ["name"]
+    },
+    "BadWord": {
+      "title": "BadWord",
+      "description": "A forbidden word, link, or mention pattern.",
+      "type": "object",
+      "properties": {
+        "pattern": { "type": "string", "description": "The word, link, or mention to filter." },
+        "type": { "type": "string", "enum": ["word", "link", "mention"], "description": "The type of pattern." },
+        "warningsCount": { "type": "integer", "description": "Number of warnings before punishment." },
+        "warningMessage": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "color": { "type": "string" },
+            "imageUrl": { "type": "string" }
+          }
+        },
+        "punishment": { "type": "string", "enum": ["ban", "mute", "none"], "description": "The action to take." },
+        "muteDuration": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["seconds", "minutes", "hours", "days"] }
+          }
+        },
+        "deleteMessage": { "type": "boolean", "description": "Whether to delete the offending message." },
+        "logReport": { "type": "boolean", "description": "Whether to log a report." },
+        "reportRoomId": { "type": "string", "description": "The ID of the room to log reports to." }
+      },
+      "required": ["pattern", "type"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A log of a bad word violation.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "badWordId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "messageContent": { "type": "string" },
+        "actionTaken": { "type": "string" }
+      },
+      "required": ["userId", "badWordId", "timestamp"]
+    },
+    "ServerStats": {
+      "title": "ServerStats",
+      "description": "Global server statistics.",
+      "type": "object",
+      "properties": {
+        "memberCount": { "type": "integer", "description": "The total number of members in the server." }
+      }
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Collection of server rooms."
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of room categories."
+    },
+    "/badWords/{badWordId}": {
+      "schema": "BadWord",
+      "description": "Collection of forbidden patterns."
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Collection of violation reports."
+    },
+    "/stats/global": {
+      "schema": "ServerStats",
+      "description": "Global server stats."
+    }
+  }
+}
